@@ -119,6 +119,8 @@ namespace iTextSharp.text.pdf {
         private PdfViewerPreferencesImp viewerPreferences = new PdfViewerPreferencesImp();
         private bool encryptionError;
 
+        private Stream streamCache = null; // BD optmization 11072014/MHN
+
         /**
         * Holds value of property appendable.
         */
@@ -2149,11 +2151,18 @@ namespace iTextSharp.text.pdf {
         public static byte[] GetStreamBytesRaw(PRStream stream) {
             RandomAccessFileOrArray rf = stream.Reader.SafeFile;
             try {
+                if (stream.Reader.streamCache != null)
+                {
+                    rf.rf = (FileStream)stream.Reader.streamCache;
+                }
+
                 rf.ReOpen();
+                stream.Reader.streamCache = rf.rf;
+
                 return GetStreamBytesRaw(stream, rf);
             }
             finally {
-                try{rf.Close();}catch{}
+              //  try{rf.Close();}catch{}
             }
         }
 

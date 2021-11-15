@@ -3,6 +3,7 @@ using System.Collections;
 using System.IO;
 using System.Xml;
 using System.util;
+using System.Collections.Generic;
 /*
  * Copyright 2003-2005 by Paulo Soares.
  *
@@ -60,6 +61,7 @@ namespace iTextSharp.text.pdf {
         internal PdfReader reader;
         internal PdfWriter writer;
         internal Hashtable fields;
+        internal Dictionary<string, AcroFields.Item> fieldsDict;
         private int topFirst;
         private Hashtable sigNames;
         private bool append;
@@ -124,6 +126,8 @@ namespace iTextSharp.text.pdf {
 
         internal void Fill() {
             fields = new Hashtable();
+            fieldsDict = new Dictionary<string, Item>();
+
             PdfDictionary top = (PdfDictionary)PdfReader.GetPdfObjectRelease(reader.Catalog.Get(PdfName.ACROFORM));
             if (top == null)
                 return;
@@ -167,10 +171,11 @@ namespace iTextSharp.text.pdf {
                     }
                     if (name.Length > 0)
                         name = name.Substring(0, name.Length - 1);
-                    Item item = (Item)fields[name];
-                    if (item == null) {
+                    Item item;
+                    if (!fieldsDict.TryGetValue(name, out item))
+                    {
                         item = new Item();
-                        fields[name] = item;
+                        fieldsDict[name] = item;
                     }
                     if (value == null)
                         item.AddValue(widget);
@@ -185,6 +190,14 @@ namespace iTextSharp.text.pdf {
                     item.AddTabOrder(j);
                 }
             }
+
+            fields = new Hashtable();
+            foreach (String dictKey in fieldsDict.Keys)
+            {
+                Item item = fieldsDict[dictKey];
+                fields.Add(dictKey, item);
+            }
+
             // some tools produce invisible signatures without an entry in the page annotation array
             // look for a single level annotation
             PdfNumber sigFlags = top.GetAsNumber(PdfName.SIGFLAGS);
@@ -209,7 +222,7 @@ namespace iTextSharp.text.pdf {
                 if (t == null)
                     continue;
                 String name = t.ToUnicodeString();
-                if (fields.ContainsKey(name))
+                if (fieldsDict.ContainsKey(name))
                     continue;
                 Item item = new Item();
                 fields[name] = item;
@@ -233,7 +246,10 @@ namespace iTextSharp.text.pdf {
             Item fd = (Item)fields[fieldName];
             if (fd == null)
                 return null;
-            Hashtable names = new Hashtable();
+
+            Dictionary<string, object> names = new Dictionary<string, object>();    // Using a dictionary to ensure right order
+//            Hashtable names = new Hashtable();
+
             PdfDictionary vals = fd.GetValue(0);
             PdfString stringOpt = vals.GetAsString( PdfName.OPT );
             if (stringOpt != null) {
@@ -1396,6 +1412,17 @@ namespace iTextSharp.text.pdf {
         public Hashtable Fields {
             get {
                 return fields;
+            }
+        }
+
+        /**
+         * BD Change, support correct order of acro fields
+         */
+        public Dictionary<string, AcroFields.Item> FieldsDict
+        {
+            get
+            {
+                return fieldsDict;
             }
         }
         

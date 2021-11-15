@@ -1,12 +1,12 @@
+using iTextSharp.text.pdf.collection;
+using iTextSharp.text.pdf.intern;
+using iTextSharp.text.xml.xmp;
 using System;
-using System.IO;
 using System.Collections;
+using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using System.util;
-using iTextSharp.text.pdf.interfaces;
-using iTextSharp.text.pdf.intern;
-using iTextSharp.text.pdf.collection;
-using iTextSharp.text.xml.xmp;
 /*
  * Copyright 2003 by Paulo Soares.
  *
@@ -54,7 +54,8 @@ using iTextSharp.text.xml.xmp;
  * http://www.lowagie.com/iText/
  */
 
-namespace iTextSharp.text.pdf {
+namespace iTextSharp.text.pdf
+{
     public class PdfStamperImp : PdfWriter {
         internal Hashtable readers2intrefs = new Hashtable();
         internal Hashtable readers2file = new Hashtable();
@@ -200,7 +201,7 @@ namespace iTextSharp.text.pdf {
             if (iInfo != null)
                 skipInfo = iInfo.Number;
             if (oldInfo != null && oldInfo.Get(PdfName.PRODUCER) != null)
-                producer = oldInfo.GetAsString(PdfName.PRODUCER).ToString();
+                producer = oldInfo.GetAsString(PdfName.PRODUCER).ToUnicodeString();
             if (producer == null) {
                 producer = Document.Version;
             }
@@ -788,6 +789,7 @@ namespace iTextSharp.text.pdf {
                 throw new ArgumentException("Field flattening is not supported in append mode.");
             AcroFields af = AcroFields;
             Hashtable fields = acroFields.Fields;
+            Dictionary<string, AcroFields.Item> fieldsDict = acroFields.FieldsDict; //MHN Change 14032012, correct order of flattend fields
             if (fieldsAdded && partialFlattening.Count == 0) {
                 foreach (object obf in fields.Keys) {
                     partialFlattening[obf] = null;
@@ -798,7 +800,8 @@ namespace iTextSharp.text.pdf {
             if (acroForm != null) {
                 acroFds = (PdfArray)PdfReader.GetPdfObject(acroForm.Get(PdfName.FIELDS), acroForm);
             }
-            foreach (DictionaryEntry entry in fields) {
+            foreach (KeyValuePair<string, AcroFields.Item> entry in fieldsDict)
+            {
                 String name = (String)entry.Key;
                 if (partialFlattening.Count != 0 && !partialFlattening.ContainsKey(name))
                     continue;
@@ -838,6 +841,7 @@ namespace iTextSharp.text.pdf {
                                 }
                             }
                         }
+
                         if (app != null) {
                             Rectangle box = PdfReader.GetNormalizedRectangle(merged.GetAsArray(PdfName.RECT));
                             PdfContentByte cb = GetOverContent(page);
@@ -846,6 +850,9 @@ namespace iTextSharp.text.pdf {
                             cb.SetLiteral("q ");
                         }
                     }
+
+                    continue;
+
                     if (partialFlattening.Count == 0)
                         continue;
                     PdfDictionary pageDic = reader.GetPageN(page);
@@ -897,6 +904,9 @@ namespace iTextSharp.text.pdf {
                     }
                 }
             }
+
+            return;
+
             if (!fieldsAdded && partialFlattening.Count == 0) {
                 for (int page = 1; page <= reader.NumberOfPages; ++page) {
                     PdfDictionary pageDic = reader.GetPageN(page);
